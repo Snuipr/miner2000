@@ -1,38 +1,14 @@
 import random
 import asyncio
 import psycopg2
-from aiogram.types import Message
+from aiogram.types import Message, CallbackQuery
 from aiogram import Bot, Dispatcher, F
 from aiogram.filters import CommandStart
-from aiogram.types import KeyboardButton, ReplyKeyboardMarkup
-
-kb_game = ReplyKeyboardMarkup(keyboard=[
-    [KeyboardButton(text='0'), KeyboardButton(text='1'), KeyboardButton(text='2'), KeyboardButton(text='3'),
-     KeyboardButton(text='4')],
-    [KeyboardButton(text='5'), KeyboardButton(text='6'), KeyboardButton(text='7'), KeyboardButton(text='8'),
-     KeyboardButton(text='9')],
-    [KeyboardButton(text='10'), KeyboardButton(text='11'), KeyboardButton(text='12'), KeyboardButton(text='13'),
-     KeyboardButton(text='14')],
-    [KeyboardButton(text='15'), KeyboardButton(text='16'), KeyboardButton(text='17'), KeyboardButton(text='18'),
-     KeyboardButton(text='19')],
-    [KeyboardButton(text='20'), KeyboardButton(text='21'), KeyboardButton(text='22'), KeyboardButton(text='23'),
-     KeyboardButton(text='24')],
-    [KeyboardButton(text='Забрать')]], resize_keyboard=True)
-
-kb_main = ReplyKeyboardMarkup(keyboard=[[KeyboardButton(text="Играть")],
-                                        [KeyboardButton(text="Баланс")],
-                                        [KeyboardButton(text="Пополнить баланс")]], resize_keyboard=True)
-
-kb_pay = ReplyKeyboardMarkup(keyboard=[[KeyboardButton(text="Отмена")]], resize_keyboard=True)
-
-kb_play = ReplyKeyboardMarkup(keyboard=[[KeyboardButton(text="5 Мин")],
-                                        [KeyboardButton(text="7 Мин")],
-                                        [KeyboardButton(text="10 Мин")],
-                                        [KeyboardButton(text="Отмена")]], resize_keyboard=True)
-
+from aiogram.utils.keyboard import InlineKeyboardBuilder
+from aiogram.types import KeyboardButton, InlineKeyboardButton, InlineKeyboardMarkup
 
 def add_new_user(user_id: str) -> None:
-    con = psycopg2.connect(dbname='postgres', user='postgres', password='1', host='localhost', port='5432')
+    con = psycopg2.connect(dbname='krestiki_noliki', user='postgres', password='1', host='localhost', port='5432')
     cursor = con.cursor()
     try:
         insert_query = """INSERT INTO miner(id, balance, win, lose, stavka, map, my_map, upend, lobby_player, game_mode) 
@@ -48,7 +24,7 @@ def add_new_user(user_id: str) -> None:
 
 def payme(user_id: str, pay: int) -> None:
     balance = get_table_info(user_id)[0][1]
-    con = psycopg2.connect(dbname='postgres', user='postgres', password='1', host='localhost', port='5432')
+    con = psycopg2.connect(dbname='krestiki_noliki', user='postgres', password='1', host='localhost', port='5432')
     cursor = con.cursor()
     cursor.execute("""UPDATE miner SET balance= %s WHERE id=%s""",
                    (balance + pay, user_id))
@@ -58,7 +34,7 @@ def payme(user_id: str, pay: int) -> None:
 
 
 def stavka_table(user_id: int, stavka: int) -> None:
-    con = psycopg2.connect(dbname='postgres', user='postgres', password='1', host='localhost', port='5432')
+    con = psycopg2.connect(dbname='krestiki_noliki', user='postgres', password='1', host='localhost', port='5432')
     cursor = con.cursor()
     try:
         cursor.execute(""" UPDATE miner SET stavka= %s WHERE id=%s""",
@@ -72,7 +48,7 @@ def stavka_table(user_id: int, stavka: int) -> None:
 
 def get_table_info(user_id: int) -> list:
     id = []
-    con = psycopg2.connect(dbname='postgres', user='postgres', password='1', host='localhost', port='5432')
+    con = psycopg2.connect(dbname='krestiki_noliki', user='postgres', password='1', host='localhost', port='5432')
     cursor = con.cursor()
     cursor.execute("""SELECT id FROM miner""")
     cus = cursor.fetchall()
@@ -86,7 +62,7 @@ def get_table_info(user_id: int) -> list:
     cursor.close()
     con.close()
     add_new_user(user_id)
-    con = psycopg2.connect(dbname='postgres', user='postgres', password='1', host='localhost', port='5432')
+    con = psycopg2.connect(dbname='krestiki_noliki', user='postgres', password='1', host='localhost', port='5432')
     cursor = con.cursor()
     cursor.execute("""SELECT * from miner where id = %s and id = %s""",
                    (user_id, user_id))
@@ -101,7 +77,7 @@ def update_table(user_id: int, lobby_player: str, game_mode: str, game_map: str 
                  lose: int = 0, stavka: int = 0, upper: int = 1) -> None:
     info = get_table_info(user_id)[0]
     try:
-        con = psycopg2.connect(dbname='postgres', user='postgres', password='1', host='localhost', port='5432')
+        con = psycopg2.connect(dbname='krestiki_noliki', user='postgres', password='1', host='localhost', port='5432')
     except:
         print("Ошибка подключения к базе данных")
         exit()
@@ -120,9 +96,9 @@ def update_table(user_id: int, lobby_player: str, game_mode: str, game_map: str 
 
 def check_choise(user_id: int, player_choice: int) -> int:
     table_map = ''
-    mode = {'5 min': 1.04,
-            '7 min': 1.05,
-            '10 min': 1.07}
+    mode = {'5 min': 1.20,
+            '7 min': 1.35,
+            '10 min': 1.40}
     info = get_table_info(user_id)[0]
     upper = info[7]
     my_map = get_table_my_map(info[6])
@@ -155,17 +131,13 @@ def create_game_map(choise: int) -> str:
     return map
 
 
-def print_game_map(map: str) -> list:
-    maping = {1: "⬛️", 2: "💥", 3: "💲"}
-    s = []
-    answer = []
-    for i in map:
-        s.append(maping[int(i)])
-        if len(s) == 5:
-            answer.append(s)
-            s = []
-    return answer
-
+def print_game_map(map: str):
+    maping = {'1': "⬛️", '3': "💲"}
+    keyboard = InlineKeyboardBuilder()
+    for i in range(25):
+        keyboard.add(InlineKeyboardButton(text=maping[map[int(i)]], callback_data=str(i)))
+    keyboard.add(InlineKeyboardButton(text="Забрать", callback_data="take"))
+    return keyboard.adjust(5).as_markup()
 
 def get_table_my_map(map: str) -> list:
     answer = []
@@ -173,17 +145,30 @@ def get_table_my_map(map: str) -> list:
         answer.append(i)
     return answer
 
+kb_menu = InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text="Играть", callback_data="play")],
+                                        [InlineKeyboardButton(text="Баланс", callback_data="money")],
+                                        [InlineKeyboardButton(text="Вывести", callback_data="get_money")],
+                                        [InlineKeyboardButton(text="Пополнить баланс", callback_data="pay")]])
 
-bot = Bot(token='7566423981:AAEGDZp8kRuDWTlUTn_6xz-_XeLKS5aACnU')
+kb_pay = InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text="Отмена", callback_data="menu")]])
+
+kb_play = InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text="5 Мин", callback_data="5 min")],
+                                               [InlineKeyboardButton(text="7 Мин", callback_data="7 min")],
+                                               [InlineKeyboardButton(text="10 Мин", callback_data="10 min")],
+                                               [InlineKeyboardButton(text="Отмена", callback_data="menu")]])
+mode = {'5 min': 1.20,
+        '7 min': 1.35,
+        '10 min': 1.40}
+bot = Bot(token='7742788199:AAFdbZDnds3wgpoHqPO49-McbpL-pLaBNCM')
 ds = Dispatcher()
-
 
 @ds.message(CommandStart())
 async def start(message: Message):
     """Завершено"""
+    global mode
     info = get_table_info(message.from_user.id)[0]
     if info[8] == "menu":
-        await message.answer("Приветствую пользователь", reply_markup=kb_main)
+        await message.answer("Меню", reply_markup=kb_menu)
     elif info[8] == "pay":
         await message.answer("Введите сумму пополнения", reply_markup=kb_pay)
     elif info[8] == "stavka":
@@ -191,262 +176,146 @@ async def start(message: Message):
     elif info[8] == "play":
         await message.answer("Выберите кол-во мин", reply_markup=kb_play)
     elif info[8] == "game":
-        game_map = print_game_map(info[6])
-        await message.answer(
-            f"{game_map[0][0]} {game_map[0][1]} {game_map[0][2]} {game_map[0][3]} {game_map[0][4]} \n"
-            f"{game_map[1][0]} {game_map[1][1]} {game_map[1][2]} {game_map[1][3]} {game_map[1][4]} \n"
-            f"{game_map[2][0]} {game_map[2][1]} {game_map[2][2]} {game_map[2][3]} {game_map[2][4]} \n"
-            f"{game_map[3][0]} {game_map[3][1]} {game_map[3][2]} {game_map[3][3]} {game_map[3][4]} \n"
-            f"{game_map[4][0]} {game_map[4][1]} {game_map[4][2]} {game_map[4][3]} {game_map[4][4]}",
-            reply_markup=kb_game)
+        await message.answer(f"Выйгрыш: {int(info[4])*float(info[7])} руб, Коэфицент {info[7]},След {float(info[7])*mode[info[9]]}", reply_markup=print_game_map(info[6]))
     else:
         print("Ошибка в блоке (Start)")
 
 
-@ds.message(F.text == "Играть")
-async def start_game(message: Message):
+@ds.callback_query(F.data == "play")
+async def start_game(callback: CallbackQuery):
     """Не Проверено"""
-    info = get_table_info(message.from_user.id)[0]
-    if info[8] == "menu":
-        update_table(info[0], "play", "")
-        await message.answer("Выберите кол-во мин", reply_markup=kb_play)
-    elif info[8] == "pay" or info[8] == "stavka":
-        await message.answer("Вы не находитесь в меню", reply_markup=kb_pay)
-    elif info[8] == "game":
-        await message.answer("Вы уже начали игру", reply_markup=kb_game)
-    elif info[8] == "play":
-        await message.answer("Вы уже в игре", reply_markup=kb_play)
-    else:
-        print("Ошибка в блоке (Играть)")
+    info = get_table_info(callback.from_user.id)[0]
+    update_table(info[0], "play", "")
+    await callback.answer("Успешно")
+    await callback.message.edit_text("Выберите кол-во мин", reply_markup=kb_play)
 
 
-@ds.message(F.text == "Баланс")
-async def balance(message: Message):
+@ds.callback_query(F.data == "money")
+async def balance(callback: CallbackQuery):
     """Закончено"""
-    info = get_table_info(message.from_user.id)[0]
-    if info[8] == "menu":
-        await message.answer(f"Ваш баланс: {info[1]} рублей")
-    elif info[8] == "play":
-        await message.answer("Вы не находитесь в меню", reply_markup=kb_play)
-    elif info[8] == "game":
-        await message.answer("Вы не находитесь в меню", reply_markup=kb_game)
-    elif info[8] == "pay":
-        await message.answer("Вы не находитесь в меню", reply_markup=kb_pay)
-    elif info[8] == "stavka":
-        await message.answer("Вы не находитесь в меню", reply_markup=kb_pay)
+    info = get_table_info(callback.from_user.id)[0]
+    await callback.answer(f"Ваш баланс: {info[1]} рублей")
 
+@ds.callback_query(F.data == "get_money")
+async def get_money(callback: CallbackQuery):
+    await callback.answer("В разработке")
 
-@ds.message(F.text == "Пополнить баланс")
-async def pay(message: Message):
+@ds.callback_query(F.data == "pay")
+async def pay(callback: CallbackQuery):
     """Не Проверено"""
-    info = get_table_info(message.from_user.id)[0]
-    if info[8] == "menu":
-        await message.answer(
-            f"Введите сумму пополнения, текущий баланс: {info[1]} рублей \n (Если на балансе больше 50 к рублей пополнять нельзя)",
-            reply_markup=kb_pay)
-        update_table(info[0], "pay", "")
-    elif info[8] == "play":
-        await message.answer("Вы не находитесь в меню", reply_markup=kb_play)
-    elif info[8] == "game":
-        await message.answer("Вы не находитесь в меню", reply_markup=kb_game)
-    elif info[8] == "stavka":
-        await message.answer("Вы не находитесь в меню", reply_markup=kb_pay)
-    else:
-        print("Ошибка в блоке (Пополнить баланс)")
+    info = get_table_info(callback.from_user.id)[0]
+    await callback.answer("Успешно")
+    await callback.message.edit_text(f"Введите сумму пополнения, текущий баланс: {info[1]} рублей \n "
+                                       f"(Если на балансе больше 50 к рублей пополнять нельзя)", reply_markup=kb_pay)
+    update_table(info[0], "pay", "")
 
 
-@ds.message(F.text == "5 Мин")
-async def game_5(message: Message):
+@ds.callback_query(F.data == "5 min")
+async def game_5(callback: CallbackQuery):
     """Не проверено"""
-    info = get_table_info(message.from_user.id)[0]
-    if info[8] == "play":
-        update_table(info[0], "stavka", "5 min")
-        await message.answer(f"Ваш баланс: {info[1]} рублей \n Выберите ставку", reply_markup=kb_pay)
-    elif info[8] == "menu":
-        await message.answer("Вы не находитесь в меню игры", reply_markup=kb_main)
-    elif info[8] == "game":
-        await message.answer("Вы не находитесь в меню игры", reply_markup=kb_game)
-    elif info[8] == "pay" or info[8] == "stavka":
-        await message.answer("Вы не находитесь в меню игры", reply_markup=kb_pay)
-    else:
-        print("Ошибка в блоке (5 Мин)")
+    info = get_table_info(callback.from_user.id)[0]
+    update_table(info[0], "stavka", "5 min")
+    await callback.answer("Успешно")
+    await callback.message.edit_text(f"Ваш баланс: {info[1]} рублей \n Выберите ставку", reply_markup=kb_pay)
 
-
-@ds.message(F.text == "7 Мин")
-async def game_7(message: Message):
+@ds.callback_query(F.data == "7 min")
+async def game_7(callback: CallbackQuery):
     """Не проверено"""
-    info = get_table_info(message.from_user.id)[0]
-    if info[8] == "play":
-        update_table(info[0], "stavka", "7 min")
-        await message.answer(f"Ваш баланс: {info[1]} рублей \n Выберите ставку", reply_markup=kb_pay)
-    elif info[8] == "menu":
-        await message.answer("Вы не находитесь в меню игры", reply_markup=kb_main)
-    elif info[8] == "game":
-        await message.answer("Вы не находитесь в меню игры", reply_markup=kb_game)
-    elif info[8] == "pay" or info[8] == "stavka":
-        await message.answer("Вы не находитесь в меню игры", reply_markup=kb_pay)
-    else:
-        print("Ошибка в блоке (7 Мин)")
+    info = get_table_info(callback.from_user.id)[0]
+    update_table(info[0], "stavka", "7 min")
+    await callback.answer("Успешно")
+    await callback.message.edit_text(f"Ваш баланс: {info[1]} рублей \n Выберите ставку", reply_markup=kb_pay)
 
-
-@ds.message(F.text == "10 Мин")
-async def game_10(message: Message):
+@ds.callback_query(F.data == "10 min")
+async def game_10(callback: CallbackQuery):
     """Не проверено"""
-    info = get_table_info(message.from_user.id)[0]
-    if info[8] == "play":
-        update_table(info[0], "stavka", "10 min")
-        await message.answer(f"Ваш баланс: {info[1]} рублей \n Выберите ставку", reply_markup=kb_pay)
-    elif info[8] == "menu":
-        await message.answer("Вы не находитесь в меню игры", reply_markup=kb_main)
-    elif info[8] == "game":
-        await message.answer("Вы не находитесь в меню игры", reply_markup=kb_game)
-    elif info[8] == "pay":
-        await message.answer("Вы не находитесь в меню игры", reply_markup=kb_pay)
-    else:
-        print("Ошибка в блоке (10 Мин)")
+    info = get_table_info(callback.from_user.id)[0]
+    update_table(info[0], "stavka", "10 min")
+    await callback.answer("Успешно")
+    await callback.message.edit_text(f"Ваш баланс: {info[1]} рублей \n Выберите ставку", reply_markup=kb_pay)
 
 
-@ds.message(F.text == "Отмена")
-async def pay_close(message: Message):
+@ds.callback_query(F.data == "menu")
+async def pay_close(callback: CallbackQuery):
     """Не проверено"""
-    info = get_table_info(message.from_user.id)[0]
+    info = get_table_info(callback.from_user.id)[0]
     if info[8] == "pay":
         update_table(info[0], "menu", "")
-        await message.answer("Отмена оплаты", reply_markup=kb_main)
+        await callback.answer("Отмена оплаты")
+        await callback.message.edit_text("Меню", reply_markup=kb_menu)
     elif info[8] == "stavka":
         update_table(info[0], "menu", "")
-        await message.answer("Отмена ставки", reply_markup=kb_main)
+        await callback.answer("Отмена ставки")
+        await callback.message.edit_text("Меню", reply_markup=kb_menu)
     elif info[8] == "play":
         update_table(info[0], "menu", "")
-        await message.answer("Отмена выбора кол-во мин", reply_markup=kb_main)
-    elif info[8] == "game":
-        await message.answer("Нельзя во время игры", reply_markup=kb_game)
-    elif info[8] == "menu":
-        await message.answer("Нечего отменять", reply_markup=kb_main)
-    else:
-        print("Ошибка в блоке (Отмена)")
+        await callback.answer("Отмена выбора кол-во мин")
+        await callback.message.edit_text("Меню", reply_markup=kb_menu)
 
 
-@ds.message(F.text == "Забрать")
-async def withdraw(message: Message):
+
+@ds.callback_query(F.data == "take")
+async def withdraw(callback: Message):
     """Не закончено"""
-    info = get_table_info(message.from_user.id)[0]
-    if info[8] == "game":
-        update_table(info[0], "menu", "", win=1, pay=(float(info[4]) * float(info[7])) - float(info[4]))
-        await message.answer(f"Вы выйграли: {int(info[4]) * float(info[7]) - float(info[4])} рублей \n"
-                             f"Ваш баланс: {float(info[1]) + ((float(info[4]) * float(info[7]) - float(info[4])))} рублей",
-                             reply_markup=kb_main)
-    elif info[8] == "menu":
-        await message.answer("Нельзя вне игры", reply_markup=kb_main)
-    elif info[8] == "play":
-        await message.answer("Нельзя вне игры", reply_markup=kb_play)
-    elif info[8] == "pay" or info[8] == "stavka":
-        await message.answer("Нельзя вне игры", reply_markup=kb_pay)
-    else:
-        print("Ошибка в блоке (Забрать)")
+    info = get_table_info(callback.from_user.id)[0]
+    update_table(info[0], "menu", "", win=1, pay=(float(info[4]) * float(info[7])) - float(info[4]))
+    await callback.answer(f"Вы выйграли: {int(info[4]) * float(info[7])} рублей")
+    await callback.message.edit_text("Меню", reply_markup=kb_menu)
 
+@ds.callback_query(F.data.isdigit())
+async def game(callback: CallbackQuery):
+    """Не проверено"""
+    global mode
+    info = get_table_info(callback.from_user.id)[0]
+    s = callback.data
+    choice = check_choise(info[0], int(s))
+    info = get_table_info(info[0])[0]
+    if choice == 3:
+        await callback.message.edit_text(f"Выйгрыш: {info[4] * info[7]} руб, Коэфицент {info[7]},След {float(info[7])*mode[info[9]]}", reply_markup=print_game_map(info[6]))
+    elif choice == 2:
+        update_table(info[0], "menu", "", lose=1, pay=-info[4])
+        await callback.answer(f"Вы проиграли и потеряли {info[4]} руб")
+        await callback.message.edit_text("Меню", reply_markup=kb_menu)
+    elif choice == 1:
+        await callback.answer("Вы уже выбирали это поле")
+    elif choice == 0:
+        await callback.answer("Выход из списка")
 
 @ds.message(F.text.isdigit())
 async def all_number(message: Message):
     """Закончено"""
     info = get_table_info(message.from_user.id)[0]
     if info[8] == "pay":
-        if info[1] <= 50000 and int(info[1]) + int(message.text) <= 50000:
+        if int(info[1]) + int(message.text) <= 50000:
             update_table(info[0], "menu", info[9], pay=int(message.text))
             await message.answer(
-                f"Пополнено на {int(message.text)} рублей, ваш баланс: {info[1] + int(message.text)} рублей.",
-                reply_markup=kb_main)
+                f"Пополнено на {int(message.text)} рублей, ваш баланс: {info[1] + int(message.text)} рублей.")
+            await message.answer("Меню", reply_markup=kb_menu)
         else:
-            await message.answer("У вас превышен(будет превышен) лимит", reply_markup=kb_main)
             update_table(info[0], "menu", "")
-    elif info[8] == "stavka" and info[9] == "10 min":
-        if int(message.text) <= info[1] + 1 and int(message.text) > 0:
-            await message.answer("Ставка принята \n Режим 10 Мин")
-            update_table(info[0], "game", "10 min", game_map=create_game_map(10), stavka=int(message.text))
+            await message.answer("У вас превышен(будет превышен) лимит")
+            await message.answer("Меню", reply_markup=kb_menu)
+    elif info[8] == "stavka":
+        if 0 < int(message.text) <= info[1] + 1:
             game_map = print_game_map(info[6])
-            await message.answer(
-                f"{game_map[0][0]} {game_map[0][1]} {game_map[0][2]} {game_map[0][3]} {game_map[0][4]} \n"
-                f"{game_map[1][0]} {game_map[1][1]} {game_map[1][2]} {game_map[1][3]} {game_map[1][4]} \n"
-                f"{game_map[2][0]} {game_map[2][1]} {game_map[2][2]} {game_map[2][3]} {game_map[2][4]} \n"
-                f"{game_map[3][0]} {game_map[3][1]} {game_map[3][2]} {game_map[3][3]} {game_map[3][4]} \n"
-                f"{game_map[4][0]} {game_map[4][1]} {game_map[4][2]} {game_map[4][3]} {game_map[4][4]}",
-                reply_markup=kb_game)
+            if info[9] == "10 min":
+                await message.answer("Ставка принята \n Режим 10 Мин")
+                await message.answer(f"Выйгрыш: {message.text} руб, Коэфицент 1.00, След 1.40", reply_markup=game_map)
+                update_table(info[0], "game", "10 min", create_game_map(10), stavka=int(message.text))
+            elif info[9] == "7 min":
+                await message.answer("Ставка принята \n Режим 7 Мин")
+                await message.answer(f"Выйгрыш: {message.text} руб, Коэфицент 1.00, След 1.35", reply_markup=game_map)
+                update_table(info[0], "game", "7 min", create_game_map(7), stavka=int(message.text))
+            elif info[9] == "5 min":
+                await message.answer("Ставка принята \n Режим 5 Мин")
+                await message.answer(f"Выйгрыш: {message.text} руб, Коэфицент 1.00, След 1.20", reply_markup=game_map)
+                update_table(info[0], "game", "5 min", create_game_map(5), stavka=int(message.text))
         else:
+            await message.answer("Недостаточно средств или некорректный ввод")
+            await message.answer("Меню", reply_markup=kb_menu)
             update_table(info[0], "menu", "")
-            await message.answer("Недостаточно средств", reply_markup=kb_main)
-    elif info[8] == "stavka" and info[9] == "7 min":
-        if int(message.text) <= info[1] + 1 and int(message.text) > 0:
-            await message.answer("Ставка принята \n Режим 7 Мин")
-            update_table(info[0], "game", "7 min", create_game_map(7), stavka=int(message.text))
-            game_map = print_game_map(info[6])
-            await message.answer(
-                f"{game_map[0][0]} {game_map[0][1]} {game_map[0][2]} {game_map[0][3]} {game_map[0][4]} \n"
-                f"{game_map[1][0]} {game_map[1][1]} {game_map[1][2]} {game_map[1][3]} {game_map[1][4]} \n"
-                f"{game_map[2][0]} {game_map[2][1]} {game_map[2][2]} {game_map[2][3]} {game_map[2][4]} \n"
-                f"{game_map[3][0]} {game_map[3][1]} {game_map[3][2]} {game_map[3][3]} {game_map[3][4]} \n"
-                f"{game_map[4][0]} {game_map[4][1]} {game_map[4][2]} {game_map[4][3]} {game_map[4][4]}",
-                reply_markup=kb_game)
-        else:
-            update_table(info[0], "menu", "")
-            await message.answer("Недостаточно средств", reply_markup=kb_main)
-    elif info[8] == "stavka" and info[9] == "5 min":
-        if int(message.text) <= info[1] + 1 and int(message.text) > 0:
-            await message.answer("Ставка принята \n Режим 5 Мин")
-            update_table(info[0], "game", "5 min", create_game_map(5), stavka=int(message.text))
-            game_map = print_game_map(info[6])
-            await message.answer(
-                f"{game_map[0][0]} {game_map[0][1]} {game_map[0][2]} {game_map[0][3]} {game_map[0][4]} \n"
-                f"{game_map[1][0]} {game_map[1][1]} {game_map[1][2]} {game_map[1][3]} {game_map[1][4]} \n"
-                f"{game_map[2][0]} {game_map[2][1]} {game_map[2][2]} {game_map[2][3]} {game_map[2][4]} \n"
-                f"{game_map[3][0]} {game_map[3][1]} {game_map[3][2]} {game_map[3][3]} {game_map[3][4]} \n"
-                f"{game_map[4][0]} {game_map[4][1]} {game_map[4][2]} {game_map[4][3]} {game_map[4][4]}",
-                reply_markup=kb_game)
-        else:
-            update_table(info[0], "menu", "")
-            await message.answer("Недостаточно средств", reply_markup=kb_main)
-    elif info[8] == "game":
-        choice = check_choise(info[0], int(message.text))
-        info = get_table_info(info[0])[0]
-        game_map = print_game_map(info[6])
-        if choice == 3:
-            await message.answer(
-                f"{game_map[0][0]} {game_map[0][1]} {game_map[0][2]} {game_map[0][3]} {game_map[0][4]} \n"
-                f"{game_map[1][0]} {game_map[1][1]} {game_map[1][2]} {game_map[1][3]} {game_map[1][4]} \n"
-                f"{game_map[2][0]} {game_map[2][1]} {game_map[2][2]} {game_map[2][3]} {game_map[2][4]} \n"
-                f"{game_map[3][0]} {game_map[3][1]} {game_map[3][2]} {game_map[3][3]} {game_map[3][4]} \n"
-                f"{game_map[4][0]} {game_map[4][1]} {game_map[4][2]} {game_map[4][3]} {game_map[4][4]}",
-                reply_markup=kb_game)
-        elif choice == 2:
-            update_table(info[0], "menu", "", lose=1, pay=-info[4])
-            await message.answer("💥")
-            await message.answer(
-                f"Вы проиграли и потеряли {info[4]} рублей. \n Ваш баланс: {int(info[1]) - int(info[4])} рублей.",
-                reply_markup=kb_main)
-        elif choice == 1:
-            await message.answer(
-                f"{game_map[0][0]} {game_map[0][1]} {game_map[0][2]} {game_map[0][3]} {game_map[0][4]} \n"
-                f"{game_map[1][0]} {game_map[1][1]} {game_map[1][2]} {game_map[1][3]} {game_map[1][4]} \n"
-                f"{game_map[2][0]} {game_map[2][1]} {game_map[2][2]} {game_map[2][3]} {game_map[2][4]} \n"
-                f"{game_map[3][0]} {game_map[3][1]} {game_map[3][2]} {game_map[3][3]} {game_map[3][4]} \n"
-                f"{game_map[4][0]} {game_map[4][1]} {game_map[4][2]} {game_map[4][3]} {game_map[4][4]}",
-                reply_markup=kb_game)
-        elif choice == 0:
-            await message.answer(
-                f"{game_map[0][0]} {game_map[0][1]} {game_map[0][2]} {game_map[0][3]} {game_map[0][4]} \n"
-                f"{game_map[1][0]} {game_map[1][1]} {game_map[1][2]} {game_map[1][3]} {game_map[1][4]} \n"
-                f"{game_map[2][0]} {game_map[2][1]} {game_map[2][2]} {game_map[2][3]} {game_map[2][4]} \n"
-                f"{game_map[3][0]} {game_map[3][1]} {game_map[3][2]} {game_map[3][3]} {game_map[3][4]} \n"
-                f"{game_map[4][0]} {game_map[4][1]} {game_map[4][2]} {game_map[4][3]} {game_map[4][4]}",
-                reply_markup=kb_game)
     else:
-        await message.answer("Неверный ввод", reply_markup=kb_game)
-
-
-@ds.message()
-async def all_message(message: Message):
-    await message.answer("Старайтесь пользоваться клавиатурой если это возможно")
-
-
+        await message.answer("Ошибка ввода")
 async def main():
     await ds.start_polling(bot)
 
