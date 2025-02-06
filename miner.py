@@ -159,7 +159,7 @@ kb_play = InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text="5 М
 mode = {'5 min': 1.20,
         '7 min': 1.35,
         '10 min': 1.40}
-bot = Bot(token='7742788199:AAFdbZDnds3wgpoHqPO49-McbpL-pLaBNCM')
+bot = Bot(token='7566423981:AAEGDZp8kRuDWTlUTn_6xz-_XeLKS5aACnU')
 ds = Dispatcher()
 
 @ds.message(CommandStart())
