@@ -8,7 +8,7 @@ from aiogram.utils.keyboard import InlineKeyboardBuilder
 from aiogram.types import KeyboardButton, InlineKeyboardButton, InlineKeyboardMarkup
 
 def add_new_user(user_id: str) -> None:
-    con = psycopg2.connect(dbname='krestiki_noliki', user='postgres', password='1', host='localhost', port='5432')
+    con = psycopg2.connect(dbname='postgres', user='postgres', password='1', host='localhost', port='5432')
     cursor = con.cursor()
     try:
         insert_query = """INSERT INTO miner(id, balance, win, lose, stavka, map, my_map, upend, lobby_player, game_mode) 
@@ -24,7 +24,7 @@ def add_new_user(user_id: str) -> None:
 
 def payme(user_id: str, pay: int) -> None:
     balance = get_table_info(user_id)[0][1]
-    con = psycopg2.connect(dbname='krestiki_noliki', user='postgres', password='1', host='localhost', port='5432')
+    con = psycopg2.connect(dbname='postgres', user='postgres', password='1', host='localhost', port='5432')
     cursor = con.cursor()
     cursor.execute("""UPDATE miner SET balance= %s WHERE id=%s""",
                    (balance + pay, user_id))
@@ -34,7 +34,7 @@ def payme(user_id: str, pay: int) -> None:
 
 
 def stavka_table(user_id: int, stavka: int) -> None:
-    con = psycopg2.connect(dbname='krestiki_noliki', user='postgres', password='1', host='localhost', port='5432')
+    con = psycopg2.connect(dbname='postgres', user='postgres', password='1', host='localhost', port='5432')
     cursor = con.cursor()
     try:
         cursor.execute(""" UPDATE miner SET stavka= %s WHERE id=%s""",
@@ -48,7 +48,7 @@ def stavka_table(user_id: int, stavka: int) -> None:
 
 def get_table_info(user_id: int) -> list:
     id = []
-    con = psycopg2.connect(dbname='krestiki_noliki', user='postgres', password='1', host='localhost', port='5432')
+    con = psycopg2.connect(dbname='postgres', user='postgres', password='1', host='localhost', port='5432')
     cursor = con.cursor()
     cursor.execute("""SELECT id FROM miner""")
     cus = cursor.fetchall()
@@ -62,7 +62,7 @@ def get_table_info(user_id: int) -> list:
     cursor.close()
     con.close()
     add_new_user(user_id)
-    con = psycopg2.connect(dbname='krestiki_noliki', user='postgres', password='1', host='localhost', port='5432')
+    con = psycopg2.connect(dbname='postgres', user='postgres', password='1', host='localhost', port='5432')
     cursor = con.cursor()
     cursor.execute("""SELECT * from miner where id = %s and id = %s""",
                    (user_id, user_id))
@@ -77,7 +77,7 @@ def update_table(user_id: int, lobby_player: str, game_mode: str, game_map: str 
                  lose: int = 0, stavka: int = 0, upper: int = 1) -> None:
     info = get_table_info(user_id)[0]
     try:
-        con = psycopg2.connect(dbname='krestiki_noliki', user='postgres', password='1', host='localhost', port='5432')
+        con = psycopg2.connect(dbname='postgres', user='postgres', password='1', host='localhost', port='5432')
     except:
         print("Ошибка подключения к базе данных")
         exit()
