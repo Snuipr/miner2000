@@ -7,6 +7,7 @@ from aiogram.filters import CommandStart
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 from aiogram.types import KeyboardButton, InlineKeyboardButton, InlineKeyboardMarkup
 
+
 def add_new_user(user_id: str) -> None:
     con = psycopg2.connect(dbname='postgres', user='postgres', password='1', host='localhost', port='5432')
     cursor = con.cursor()
@@ -18,30 +19,6 @@ def add_new_user(user_id: str) -> None:
         con.commit()
     except:
         print("Ошибка добавления пользователя")
-    cursor.close()
-    con.close()
-
-
-def payme(user_id: str, pay: int) -> None:
-    balance = get_table_info(user_id)[0][1]
-    con = psycopg2.connect(dbname='postgres', user='postgres', password='1', host='localhost', port='5432')
-    cursor = con.cursor()
-    cursor.execute("""UPDATE miner SET balance= %s WHERE id=%s""",
-                   (balance + pay, user_id))
-    con.commit()
-    cursor.close()
-    con.close()
-
-
-def stavka_table(user_id: int, stavka: int) -> None:
-    con = psycopg2.connect(dbname='postgres', user='postgres', password='1', host='localhost', port='5432')
-    cursor = con.cursor()
-    try:
-        cursor.execute(""" UPDATE miner SET stavka= %s WHERE id=%s""",
-                       (stavka, user_id))
-        con.commit()
-    except:
-        print("Ошибка изменения записи")
     cursor.close()
     con.close()
 
@@ -94,6 +71,52 @@ def update_table(user_id: int, lobby_player: str, game_mode: str, game_map: str 
     con.close()  # закрываем соединение
 
 
+def register_name(id_user: int, name: str) -> None:
+    con = psycopg2.connect(dbname='postgres', user='postgres', password='1', host='localhost', port='5432')
+    cursor = con.cursor()
+    cursor.execute("""UPDATE miner SET name=%s WHERE id=%s""", (name, id_user))
+    con.commit()
+    cursor.close()
+    con.close()
+
+
+def leader_board() -> list:
+    answer = []
+    con = psycopg2.connect(dbname='postgres', user='postgres', password='1', host='localhost', port='5432')
+    cursor = con.cursor()
+    cursor.execute("""SELECT name, balance, win, lose FROM miner """)
+    leaders = cursor.fetchall()
+    cursor.close()
+    con.close()
+    for i in sorted(leaders, key=lambda x: x[1], reverse=True):
+        answer.append(i)
+    return answer
+
+
+def payme(user_id: str, pay: int) -> None:
+    balance = get_table_info(user_id)[0][1]
+    con = psycopg2.connect(dbname='postgres', user='postgres', password='1', host='localhost', port='5432')
+    cursor = con.cursor()
+    cursor.execute("""UPDATE miner SET balance= %s WHERE id=%s""",
+                   (balance + pay, user_id))
+    con.commit()
+    cursor.close()
+    con.close()
+
+
+def stavka_table(user_id: int, stavka: int) -> None:
+    con = psycopg2.connect(dbname='postgres', user='postgres', password='1', host='localhost', port='5432')
+    cursor = con.cursor()
+    try:
+        cursor.execute(""" UPDATE miner SET stavka= %s WHERE id=%s""",
+                       (stavka, user_id))
+        con.commit()
+    except:
+        print("Ошибка изменения записи")
+    cursor.close()
+    con.close()
+
+
 def check_choise(user_id: int, player_choice: int) -> int:
     table_map = ''
     mode = {'5 min': 1.20,
@@ -139,28 +162,32 @@ def print_game_map(map: str):
     keyboard.add(InlineKeyboardButton(text="Забрать", callback_data="take"))
     return keyboard.adjust(5).as_markup()
 
+
 def get_table_my_map(map: str) -> list:
     answer = []
     for i in map:
         answer.append(i)
     return answer
 
+
 kb_menu = InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text="Играть", callback_data="play")],
-                                        [InlineKeyboardButton(text="Баланс", callback_data="money")],
-                                        [InlineKeyboardButton(text="Вывести", callback_data="get_money")],
-                                        [InlineKeyboardButton(text="Пополнить баланс", callback_data="pay")]])
+                                                [InlineKeyboardButton(text="Список лидеров", callback_data="stata")],
+                                                [InlineKeyboardButton(text="Баланс", callback_data="money")],
+                                                [InlineKeyboardButton(text="Вывести", callback_data="get_money")],
+                                                [InlineKeyboardButton(text="Пополнить баланс", callback_data="pay")]])
 
 kb_pay = InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text="Отмена", callback_data="menu")]])
 
 kb_play = InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text="5 Мин", callback_data="5 min")],
-                                               [InlineKeyboardButton(text="7 Мин", callback_data="7 min")],
-                                               [InlineKeyboardButton(text="10 Мин", callback_data="10 min")],
-                                               [InlineKeyboardButton(text="Отмена", callback_data="menu")]])
+                                                [InlineKeyboardButton(text="7 Мин", callback_data="7 min")],
+                                                [InlineKeyboardButton(text="10 Мин", callback_data="10 min")],
+                                                [InlineKeyboardButton(text="Отмена", callback_data="menu")]])
 mode = {'5 min': 1.20,
         '7 min': 1.35,
         '10 min': 1.40}
 bot = Bot(token='7566423981:AAEGDZp8kRuDWTlUTn_6xz-_XeLKS5aACnU')
 ds = Dispatcher()
+
 
 @ds.message(CommandStart())
 async def start(message: Message):
@@ -175,8 +202,14 @@ async def start(message: Message):
         await message.answer("Введите сумму ставки", reply_markup=kb_pay)
     elif info[8] == "play":
         await message.answer("Выберите кол-во мин", reply_markup=kb_play)
+    elif info[8] == "stata":
+        pass
+    elif info[8] == "register":
+        await message.answer("Введите имя для регистрации", reply_markup=kb_pay)
     elif info[8] == "game":
-        await message.answer(f"Выйгрыш: {int(info[4])*float(info[7])} руб, Коэфицент {info[7]},След {float(info[7])*mode[info[9]]}", reply_markup=print_game_map(info[6]))
+        await message.answer(
+            f"Выйгрыш: {int(info[4]) * float(info[7])} руб, Коэфицент {info[7]},След {float(info[7]) * mode[info[9]]}",
+            reply_markup=print_game_map(info[6]))
     else:
         print("Ошибка в блоке (Start)")
 
@@ -190,15 +223,37 @@ async def start_game(callback: CallbackQuery):
     await callback.message.edit_text("Выберите кол-во мин", reply_markup=kb_play)
 
 
+@ds.callback_query(F.data == "stata")
+async def leaderboard(callback: CallbackQuery):
+    """Закончено"""
+    info = get_table_info(callback.from_user.id)[0]
+    if info[10] == None:
+        update_table(info[0], "register", "")
+        await callback.answer("Успешно")
+        await callback.message.edit_text("Введите имя для регистрации", reply_markup=kb_pay)
+    top = 1
+    leaderboard = leader_board()
+    await callback.answer("Успешно")
+    await callback.message.answer(
+        f"Ваша статистика({info[10]}): Баланс: {info[1]} рублей, Побед: {info[2]}, Поражений: {info[3]}")
+    await callback.message.answer("Лидеры(Топ 5):")
+    for i in leaderboard:
+        await callback.message.answer(f"{top}. {i[0]}: Баланс: {i[1]} рублей, Побед: {info[2]}, Поражений: {info[3]}")
+        top += 1
+    await callback.message.answer("Меню", reply_markup=kb_menu)
+
+
 @ds.callback_query(F.data == "money")
 async def balance(callback: CallbackQuery):
     """Закончено"""
     info = get_table_info(callback.from_user.id)[0]
     await callback.answer(f"Ваш баланс: {info[1]} рублей")
 
+
 @ds.callback_query(F.data == "get_money")
 async def get_money(callback: CallbackQuery):
     await callback.answer("В разработке")
+
 
 @ds.callback_query(F.data == "pay")
 async def pay(callback: CallbackQuery):
@@ -206,7 +261,7 @@ async def pay(callback: CallbackQuery):
     info = get_table_info(callback.from_user.id)[0]
     await callback.answer("Успешно")
     await callback.message.edit_text(f"Введите сумму пополнения, текущий баланс: {info[1]} рублей \n "
-                                       f"(Если на балансе больше 50 к рублей пополнять нельзя)", reply_markup=kb_pay)
+                                     f"(Если на балансе больше 50 к рублей пополнять нельзя)", reply_markup=kb_pay)
     update_table(info[0], "pay", "")
 
 
@@ -218,6 +273,7 @@ async def game_5(callback: CallbackQuery):
     await callback.answer("Успешно")
     await callback.message.edit_text(f"Ваш баланс: {info[1]} рублей \n Выберите ставку", reply_markup=kb_pay)
 
+
 @ds.callback_query(F.data == "7 min")
 async def game_7(callback: CallbackQuery):
     """Не проверено"""
@@ -225,6 +281,7 @@ async def game_7(callback: CallbackQuery):
     update_table(info[0], "stavka", "7 min")
     await callback.answer("Успешно")
     await callback.message.edit_text(f"Ваш баланс: {info[1]} рублей \n Выберите ставку", reply_markup=kb_pay)
+
 
 @ds.callback_query(F.data == "10 min")
 async def game_10(callback: CallbackQuery):
@@ -251,7 +308,9 @@ async def pay_close(callback: CallbackQuery):
         update_table(info[0], "menu", "")
         await callback.answer("Отмена выбора кол-во мин")
         await callback.message.edit_text("Меню", reply_markup=kb_menu)
-
+    elif info[8] == "register":
+        await callback.answer("Отмена регистрации")
+        await callback.message.edit_text("Меню", reply_markup=kb_menu)
 
 
 @ds.callback_query(F.data == "take")
@@ -262,6 +321,7 @@ async def withdraw(callback: Message):
     await callback.answer(f"Вы выйграли: {int(info[4]) * float(info[7])} рублей")
     await callback.message.edit_text("Меню", reply_markup=kb_menu)
 
+
 @ds.callback_query(F.data.isdigit())
 async def game(callback: CallbackQuery):
     """Не проверено"""
@@ -271,7 +331,9 @@ async def game(callback: CallbackQuery):
     choice = check_choise(info[0], int(s))
     info = get_table_info(info[0])[0]
     if choice == 3:
-        await callback.message.edit_text(f"Выйгрыш: {info[4] * info[7]} руб, Коэфицент {info[7]},След {float(info[7])*mode[info[9]]}", reply_markup=print_game_map(info[6]))
+        await callback.message.edit_text(
+            f"Выйгрыш: {info[4] * info[7]} руб, Коэфицент {info[7]},След {float(info[7]) * mode[info[9]]}",
+            reply_markup=print_game_map(info[6]))
     elif choice == 2:
         update_table(info[0], "menu", "", lose=1, pay=-info[4])
         await callback.answer(f"Вы проиграли и потеряли {info[4]} руб")
@@ -280,6 +342,20 @@ async def game(callback: CallbackQuery):
         await callback.answer("Вы уже выбирали это поле")
     elif choice == 0:
         await callback.answer("Выход из списка")
+
+
+@ds.message(F.text.isalpha())
+async def all_alpha(message: Message):
+    """Не закончено"""
+    info = get_table_info(message.from_user.id)[0]
+    if info[8] == "register":
+        update_table(info[0], "menu", game_mode="")
+        register_name(info[0], str(message.text))
+        await message.answer(f"Регистрация завершена, ваше имя: {message.text}")
+        await message.answer("Меню", reply_markup=kb_menu)
+    else:
+        await message.answer("Вы не можете ввести текст")
+
 
 @ds.message(F.text.isdigit())
 async def all_number(message: Message):
@@ -316,6 +392,8 @@ async def all_number(message: Message):
             update_table(info[0], "menu", "")
     else:
         await message.answer("Ошибка ввода")
+
+
 async def main():
     await ds.start_polling(bot)
 
