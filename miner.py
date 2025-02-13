@@ -90,6 +90,8 @@ def leader_board() -> list:
     con.close()
     for i in sorted(leaders, key=lambda x: x[1], reverse=True):
         answer.append(i)
+        if len(answer) == 5:
+            return answer
     return answer
 
 
